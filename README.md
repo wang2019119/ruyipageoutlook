@@ -106,34 +106,22 @@
 
 ---
 
-## 关于 Firefox 内核与 webdriver 标志
+## 关于 Firefox 内核与指纹浏览器
 
-如果你的目标站点对自动化非常敏感，需要特别注意：
-
-> **Firefox 浏览器需要从内核层抹除 webdriver 标志。**
-
-这不是简单的页面级 JavaScript 覆盖就能解决的问题。
-
-也就是说：
-
-- 不能只在页面里改 `navigator.webdriver`
-- 不能只靠 preload script 做表面覆盖
-- 需要使用已经在 **Firefox 内核层** 处理过 webdriver 标志的浏览器版本
-
-只有这样，很多站点的检测才能更完整地绕过。
+如果你的目标站点对自动化非常敏感，更推荐直接从浏览器底层方案入手。
 
 ### 推荐方式
 
-你可以使用任意一个已经抹除 webdriver 标志的 Firefox 版本。
+优先推荐你自己的 Firefox 内核版本。
 
-例如可以使用：
+同时，`ruyiPage` 也可以配合任意 Firefox 指纹浏览器使用。
 
 - https://github.com/LoseNine/firefox-fingerprintBrowser
 
-这类浏览器的意义在于：
+这类浏览器/内核的意义在于：
 
-- 从 Firefox 底层实现上处理 webdriver 暴露
-- 不是只做前端层伪装
+- 从 Firefox 底层能力上做定制
+- 不是只做前端层表面伪装
 - 更适合配合 `ruyiPage` 访问风控更强的网站
 
 ### 结论
@@ -145,7 +133,7 @@
 
 但如果你访问的是高风控站点，仍然建议：
 
-1. 使用已经抹除 webdriver 的 Firefox 版本
+1. 优先使用你推荐的 Firefox 内核
 2. 再用 `ruyiPage` 做自动化控制
 
 这样整体效果会更稳定。
@@ -182,7 +170,7 @@
 
 | 框架 | 主要浏览器方向 | 底层协议 | CDP 暴露面 | Firefox / BiDi 支持度 | 针对性被检测 |
 | --- | --- | --- | --- | --- | --- |
-| `ruyiPage` | **Firefox** | **WebDriver BiDi** | **无 CDP 暴露面** | **高**，主路线就是 Firefox + BiDi | **低**，原生 BiDi + `isTrusted` 行为 + 拟人操作，更适合高风控场景；配合内核层抹除 webdriver 的 Firefox 更稳定 |
+| `ruyiPage` | **Firefox** | **WebDriver BiDi** | **无 CDP 暴露面** | **高**，主路线就是 Firefox + BiDi | **低**，原生 BiDi + `isTrusted` 行为 + 拟人操作，更适合高风控场景；配合定制 Firefox 内核或火狐指纹浏览器会更稳定 |
 | Playwright | Chromium / Firefox / WebKit | 自有协议，很多能力仍偏 Chromium | 中到高 | 中，支持 Firefox，但不是以 Firefox BiDi 为核心设计 | 中到高，很多站点会优先针对主流自动化指纹做识别 |
 | Selenium | 多浏览器 | WebDriver Classic + 部分 BiDi | 低到中 | 中，兼容广，但高层 BiDi 能力不算强 | 中，传统自动化特征和使用面都比较广 |
 | Puppeteer | Chromium | CDP | **高** | 低，基本不是 Firefox 主战场 | **高**，CDP 路线暴露面更明显，也更容易被针对性检测 |
@@ -217,7 +205,7 @@
 </table>
 
 > 这些展示图用于说明 `ruyiPage` 在 Firefox 路线下的真实场景能力。
-> 如果目标站点风控更强，仍建议配合已经在内核层抹除 webdriver 标志的 Firefox 版本使用。
+> 如果目标站点风控更强，仍建议优先配合你推荐的 Firefox 内核，或任意可用的火狐指纹浏览器使用。
 
 ---
 
@@ -373,7 +361,7 @@ for item in page.eles("css:#b_results > li.b_algo"):
 
 它会：
 
-- 启动已抹除 webdriver 的 Firefox 指纹浏览器
+- 启动 Firefox 指纹浏览器
 - 通过 `--fpfile=...` 加载指纹文件
 - 打开 `browserscan` 检查指纹结果
 - 叠加地理位置、时区、语言、请求头、屏幕尺寸模拟

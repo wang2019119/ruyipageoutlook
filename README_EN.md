@@ -106,33 +106,23 @@ Before diving into the details, this table gives a quick overview of what `ruyiP
 
 ---
 
-## About Firefox Engine and the webdriver Flag
+## About Firefox Kernel and Fingerprint Browsers
 
-If your target site is highly sensitive to automation, there is one important point:
-
-> **The Firefox browser needs the webdriver flag removed at the engine level.**
-
-This is not something you can solve reliably with a simple page-level JavaScript override.
-
-In other words:
-
-- it is not enough to only change `navigator.webdriver`
-- it is not enough to only inject a preload script for superficial masking
-- you need a Firefox build where the webdriver exposure has already been handled in the **browser engine itself**
-
-Only then can many site-level detections be bypassed more completely.
+If your target site is highly sensitive to automation, it is better to start from the browser-level solution directly.
 
 ### Recommended Approach
 
-You can use any Firefox build that already removes the webdriver exposure.
+Your own recommended Firefox kernel should be the first choice.
+
+At the same time, `ruyiPage` can also work with any Firefox fingerprint browser.
 
 For example:
 
 - https://github.com/LoseNine/firefox-fingerprintBrowser
 
-The value of this kind of browser is:
+The value of this kind of browser/kernel is:
 
-- it handles webdriver exposure in Firefox internals
+- it customizes Firefox from the lower browser layer
 - it is not just front-end level masking
 - it works better together with `ruyiPage` on stronger anti-bot sites
 
@@ -145,7 +135,7 @@ The role of `ruyiPage` is:
 
 But if you are visiting high-risk sites, it is still recommended to:
 
-1. use a Firefox build with webdriver already removed
+1. use your recommended Firefox kernel first
 2. then use `ruyiPage` to automate it
 
 That combination is generally more stable.
@@ -182,7 +172,7 @@ The table below is not about declaring one framework absolutely better than anot
 
 | Framework | Main browser direction | Underlying protocol | CDP exposure surface | Firefox / BiDi support | Targeted detection |
 | --- | --- | --- | --- | --- | --- |
-| `ruyiPage` | **Firefox** | **WebDriver BiDi** | **No CDP exposure surface** | **High**, Firefox + BiDi is the main route | **Low**, native BiDi + `isTrusted` behavior + human-like actions fit high-risk scenarios better; even more stable with a Firefox build that removes webdriver at the engine level |
+| `ruyiPage` | **Firefox** | **WebDriver BiDi** | **No CDP exposure surface** | **High**, Firefox + BiDi is the main route | **Low**, native BiDi + `isTrusted` behavior + human-like actions fit high-risk scenarios better; even more stable with a custom Firefox kernel or a Firefox fingerprint browser |
 | Playwright | Chromium / Firefox / WebKit | Proprietary protocol, many features still lean toward Chromium | Medium to high | Medium, supports Firefox but is not primarily designed around Firefox BiDi | Medium to high, many sites target mainstream automation fingerprints first |
 | Selenium | Multiple browsers | WebDriver Classic + partial BiDi | Low to medium | Medium, broad compatibility but weaker high-level BiDi capabilities | Medium, traditional automation traits are widespread |
 | Puppeteer | Chromium | CDP | **High** | Low, not really focused on Firefox | **High**, CDP-based exposure is more obvious and more frequently targeted |
@@ -217,7 +207,7 @@ The images below show real scenarios. To keep the GitHub homepage more compact, 
 </table>
 
 > These images demonstrate real-world capability along the Firefox route.
-> If the target site is more heavily protected, it is still recommended to use a Firefox build that removes webdriver at the engine level.
+> If the target site is more heavily protected, it is still recommended to pair it with your recommended Firefox kernel or any suitable Firefox fingerprint browser.
 
 ---
 
@@ -373,7 +363,7 @@ File: `quickstart_fingerprint_browser.py`
 
 It will:
 
-- launch a Firefox fingerprint browser build with webdriver removed
+- launch a Firefox fingerprint browser
 - load the fingerprint file through `--fpfile=...`
 - open `browserscan` to inspect fingerprint results
 - combine geolocation, timezone, locale, request headers, and screen size emulation
