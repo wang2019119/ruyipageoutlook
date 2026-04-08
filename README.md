@@ -1139,6 +1139,8 @@ page.extensions.uninstall(ext_id)
  </picture>
 </a>
 
+[![Star History Chart](https://api.star-history.com/chart?repos=LoseNine/ruyipage&type=date&legend=top-left)](https://www.star-history.com/?repos=LoseNine%2Fruyipage&type=date&legend=top-left)
+
 ---
 
 ## 最后说明

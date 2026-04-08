@@ -1104,6 +1104,8 @@ This is also the design source for many high-level APIs in this project, such as
  </picture>
 </a>
 
+[![Star History Chart](https://api.star-history.com/chart?repos=LoseNine/ruyipage&type=date&legend=top-left)](https://www.star-history.com/?repos=LoseNine%2Fruyipage&type=date&legend=top-left)
+
 ---
 
 ## Final Notes
