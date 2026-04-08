@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ruyiPage"
+version = "1.0.1"
+description = "Firefox 浏览器自动化库，基于 WebDriver BiDi 协议。"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+  { name = "ruyiPage" }
+]
+keywords = [
+  "firefox",
+  "webdriver-bidi",
+  "browser-automation",
+  "automation",
+  "bidi"
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Testing",
+  "Topic :: Internet :: WWW/HTTP :: Browsers",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/LoseNine/ruyipage"
+Repository = "https://github.com/LoseNine/ruyipage"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["ruyipage*"]
+exclude = ["examples*", "dist*", "build*", "tests*"]

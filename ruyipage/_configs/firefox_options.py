@@ -509,7 +509,8 @@ class FirefoxOptions(object):
             cmd.append("--headless")
 
         if self._fpfile:
-            cmd.extend(["--fpfile", self._fpfile])
+            # Firefox 的自定义指纹参数要求使用 --fpfile=<path> 形式。
+            cmd.append("--fpfile={}".format(self._fpfile))
 
         for arg in self._arguments:
             cmd.append(arg)

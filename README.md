@@ -179,7 +179,7 @@
   </tr>
   <tr>
     <td align="center"><b>可直接进入 Google Mail</b><br><img src="images/google.jpg" width="320" alt="Google Mail" /></td>
-    <td align="center"></td>
+    <td align="center"><b>指纹浏览器指纹页展示</b><br><img src="images/fingerprint.png" width="320" alt="Fingerprint Browser Demo" /></td>
   </tr>
 </table>
 
@@ -325,6 +325,45 @@ for item in page.eles("css:#b_results > li.b_algo"):
 - `page.handle_cloudflare_challenge()`
 - `page.get_cookies(all_info=True)`
 - `FirefoxOptions` 如何写进新手脚本
+
+### 3. 指纹浏览器示例
+
+文件：`quickstart_fingerprint_browser.py`
+
+它会：
+
+- 启动已抹除 webdriver 的 Firefox 指纹浏览器
+- 通过 `--fpfile=...` 加载指纹文件
+- 打开 `browserscan` 检查指纹结果
+- 叠加地理位置、时区、语言、请求头、屏幕尺寸模拟
+
+核心写法：
+
+```python
+from ruyipage import FirefoxOptions, FirefoxPage
+
+opts = FirefoxOptions()
+opts.set_browser_path(r"C:\Program Files\Mozilla Firefox\firefox.exe")
+opts.set_fpfile(r"C:\fingerprints\profile1.txt")
+
+page = FirefoxPage(opts)
+page.get("https://www.browserscan.net/zh")
+
+page.emulation.set_geolocation(39.9042, 116.4074, accuracy=100)
+page.emulation.set_timezone("Asia/Tokyo")
+page.emulation.set_locale(["ja-JP", "ja"])
+page.network.set_extra_headers({
+    "Accept-Language": "ja-JP,ja;q=0.9"
+})
+page.emulation.set_screen_size(1366, 768, device_pixel_ratio=2.0)
+page.refresh()
+```
+
+适用场景：
+
+- 需要把 Firefox 指纹浏览器和 `ruyiPage` 配合使用
+- 希望把指纹文件、语言、请求头、屏幕参数一起带上
+- 想直接验证 `browserscan` 等站点上的指纹表现
 
 ---
 
