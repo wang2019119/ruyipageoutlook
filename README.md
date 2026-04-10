@@ -1,14 +1,14 @@
 # ruyiPage
 
+<p align="center">
+  <img src="images/ruyipage.png" width="320" alt="ruyiPage logo" />
+</p>
+
 [简体中文](./README.md) | [English](./README_EN.md)
 
 > 专用于 **AI 分析** 和 **数据采集** 场景，可拦截任意请求响应包。
 >
 > Built for **AI analysis** and **data capture** workflows, with the ability to intercept arbitrary request and response packets.
-
-<p align="center">
-  <img src="images/ruyipage.png" width="220" alt="ruyiPage logo" />
-</p>
 
 > **下一代自动化框架**
 >
@@ -25,6 +25,8 @@
 [![Downloads](https://static.pepy.tech/badge/ruyipage)](https://pepy.tech/project/ruyipage)
 
 📘 项目文档：<https://0xshoulderlab.site/automation>
+
+🧩 AI 自动化分析运行 Skill：<https://github.com/d0ublecl1ck/ruyipage-dev>，感谢 `d0ublecl1ck` 制作这个 skill。
 
 ---
 

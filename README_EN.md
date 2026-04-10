@@ -1,14 +1,14 @@
 # ruyiPage
 
+<p align="center">
+  <img src="images/ruyipage.png" width="320" alt="ruyiPage logo" />
+</p>
+
 [简体中文](./README.md) | [English](./README_EN.md)
 
 > Built for **AI analysis** and **data capture** workflows, with the ability to intercept arbitrary request and response packets.
 >
 > 专用于 **AI 分析** 和 **数据采集** 场景，可拦截任意请求响应包。
-
-<p align="center">
-  <img src="images/ruyipage.png" width="220" alt="ruyiPage logo" />
-</p>
 
 > **A next-generation automation framework**
 >
@@ -25,6 +25,8 @@
 [![Downloads](https://static.pepy.tech/badge/ruyipage)](https://pepy.tech/project/ruyipage)
 
 Docs: <https://0xshoulderlab.site/automation>
+
+AI automation analysis runtime skill: <https://github.com/d0ublecl1ck/ruyipage-dev>. Thanks to `d0ublecl1ck` for creating this skill.
 
 ---
 
