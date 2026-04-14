@@ -169,6 +169,11 @@ print(page.title)
 page.quit()
 ```
 
+其中：
+
+- **`browser_path`**：Firefox 可执行文件路径。适合 Firefox 不在默认安装目录、有多个版本或使用便携版的情况。
+- **`user_dir`**：Firefox 的 profile / 用户目录。适合想复用登录状态、保留 Cookie / 本地存储、复用扩展和首选项的情况。如果不设置，`ruyiPage` 会自动创建临时 profile，适合一次性测试，关闭后通常会被清理。
+
 ### 更适合新手的 launch
 
 ```python
@@ -290,65 +295,33 @@ print(page.url)
 - 你使用的是 ADS / FlowerBrowser，真实调试端口会随机变化
 - 你不想手动维护端口范围，希望直接按 Firefox 进程特征自动探测
 
-### 浏览器路径和 userdir 是什么
-
-#### `browser_path`
-
-Firefox 可执行文件路径。
-
-适合这些情况：
-
-- Firefox 不在默认安装目录
-- 你有多个 Firefox 版本
-- 你用便携版 Firefox
-
-#### `user_dir`
-
-也就是 Firefox 的 profile / 用户目录。
-
-适合这些情况：
-
-- 想复用登录状态
-- 想保留 Cookie / 本地存储
-- 想复用扩展、证书、首选项
-
-如果不设置：
-
-- `ruyiPage` 会自动创建临时 profile
-- 适合一次性测试
-- 关闭后通常会被清理
-
 ---
 
-## 项目定位
+## 项目定位与技术路线
 
 `ruyiPage` 是一个面向 **Firefox 浏览器自动化** 的 Python 库，底层协议来自：
 
 - WebDriver BiDi: https://w3c.github.io/webdriver-bidi/
 
-如果你想找的不是“又一个 CDP 自动化库”，而是：
-
-- **新一代 Firefox 自动化框架**
-- **基于 BiDi 协议，而不是 CDP 协议**
-- **原生动作能实现大量 `isTrusted` 行为**
-- **内置拟人化行为能力，适合高风控页面**
-- **支持网络劫持、拦截、mock、collector 等能力**
-- **支持单浏览器多 tab 使用不同 user context，隔离 Cookie / 存储上下文**
-- **更适合做长期维护的 Firefox 自动化体系**
-
-那么 `ruyiPage` 就是为这个方向准备的。
-
-你可以把它理解成：
-
 > 面向 **Firefox** 的高层自动化框架，核心思想是 **用 WebDriver BiDi 做底层、用新手易用 API 做上层**。
 
-它尤其强调四件事：
+与大量依赖 CDP（Chrome DevTools Protocol）的自动化库不同，`ruyiPage`：
 
-- **不依赖 CDP**，天然没有 CDP 路线的那层暴露面
+- 以 **Firefox** 为核心浏览器，以 **WebDriver BiDi** 为核心协议，**不依赖 CDP**
+- 天然没有 CDP 路线的暴露面，更贴近 W3C 新一代浏览器自动化协议方向
 - **原生动作链优先**，尽量让输入、拖拽、点击等行为保持 `isTrusted`
 - **内置拟人行为能力**，更适合高风控页面的真实交互场景
+- **支持网络劫持、拦截、mock、collector 等能力**
 - **支持 user context 隔离**，适合同浏览器多账号、多会话并行
 - **高层 API 可直接上手**，更适合新手和团队统一维护
+
+### 高风控场景推荐
+
+如果你的目标站点对自动化非常敏感，优先推荐使用本项目提供的 Firefox 内核方案，或配合任意 Firefox 指纹浏览器使用：
+
+- https://github.com/LoseNine/firefox-fingerprintBrowser
+
+建议流程：1) 优先使用 Firefox 内核方案 → 2) 再用 `ruyiPage` 做自动化控制，整体效果更稳定。
 
 ---
 
@@ -376,58 +349,6 @@ Firefox 可执行文件路径。
 | Emulation | `page.emulation` | UA、viewport、screen、orientation、JS 开关 |
 | WebExtension | `page.extensions` | 安装目录扩展、安装 xpi、卸载 |
 | 本地存储 | `page.local_storage` / `page.session_storage` | 读写本地存储和会话存储 |
-
----
-
-## 关于 Firefox 内核与指纹浏览器
-
-如果你的目标站点对自动化非常敏感，更推荐直接从浏览器底层方案入手。
-
-### 推荐方式
-
-优先推荐使用本项目提供的 Firefox 内核方案。
-
-同时，`ruyiPage` 也可以配合任意 Firefox 指纹浏览器使用。
-
-- https://github.com/LoseNine/firefox-fingerprintBrowser
-
-这类浏览器/内核的意义在于：
-
-- 从 Firefox 底层能力上做定制
-- 不是只做前端层表面伪装
-- 更适合配合 `ruyiPage` 访问风控更强的网站
-
-### 结论
-
-`ruyiPage` 的定位是：
-
-- 提供 Firefox + BiDi 的高层自动化能力
-- 避开 CDP 检测面
-
-但如果你访问的是高风控站点，仍然建议：
-
-1. 优先使用本项目推荐的 Firefox 内核方案
-2. 再用 `ruyiPage` 做自动化控制
-
-这样整体效果会更稳定。
-
----
-
-## 为什么是 Firefox + BiDi
-
-现在很多自动化库都大量依赖 CDP（Chrome DevTools Protocol）。
-
-`ruyiPage` 的路线不同：
-
-- 以 **Firefox** 为核心浏览器
-- 以 **WebDriver BiDi** 为核心协议
-- 不依赖 CDP
-
-这意味着：
-
-- 没有传统 CDP 自动化暴露面
-- 更贴近 W3C 新一代浏览器自动化协议方向
-- 更适合做 Firefox 专项自动化、输入行为模拟、事件监听、网络控制等能力
 
 ---
 
@@ -546,37 +467,7 @@ page.refresh()
 - 希望把指纹文件、语言、请求头、屏幕参数一起带上
 - 想直接验证 `browserscan` 等站点上的指纹表现
 
-### 4. 接管已打开的 Firefox 指纹浏览器示例
-
-文件：`examples/39_attach_exist_browser.py`
-
-它会：
-
-- 提示你先手工启动 Firefox 或 Firefox 指纹浏览器
-- 直接按 Firefox / ADS / FlowerBrowser 进程特征自动探测并接管
-- 接管成功后直接操作当前浏览器实例
-
-核心写法：
-
-```python
-from ruyipage import auto_attach_exist_browser_by_process
-
-page = auto_attach_exist_browser_by_process(
-    latest_tab=True,
-)
-
-print(page.browser.address)
-print(page.title)
-print(page.url)
-```
-
-适用场景：
-
-- 已经打开了 ADS / FlowerBrowser 之类的 Firefox 指纹浏览器
-- 浏览器后台会把 `--remote-debugging-port=9222` 改成随机端口
-- 想直接按进程特征自动探测真实端口并接管已有实例
-
-### 5. HTTP 密码代理示例
+### 4. HTTP 密码代理示例
 
 如果你使用的是本项目自己的 Firefox 内核，那么内核已经支持从 `fpfile` 自动读取 HTTP 代理用户名密码。
 
@@ -1345,12 +1236,6 @@ page.run_js("prompt('请输入姓名')", as_expr=False)
 page.clear_prompt_handler()
 ```
 
-```python
-page.set_prompt_handler(prompt="ignore", prompt_text="张三")
-page.run_js("prompt('请输入姓名')", as_expr=False)
-page.clear_prompt_handler()
-```
-
 ---
 
 ## 13. Emulation
@@ -1481,20 +1366,6 @@ page.extensions.uninstall(ext_id)
    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=LoseNine/ruyipage&type=timeline&legend=top-left" />
  </picture>
 </a>
-
----
-
-## 最后说明
-
-`ruyiPage` 的核心方向不是“把所有底层 BiDi 命令原样裸露给用户”，而是：
-
-- 对 Firefox 自动化足够友好
-- 对新手足够直观
-- 对编辑器跳转足够友好
-- 对高级用户保留足够的 BiDi 能力空间
-
-如果你主要使用 **Firefox** 做自动化，并且希望尽量避开 CDP 检测面，
-同时又想要比直接写底层协议更好理解的 API，`ruyiPage` 就是为这个方向准备的。
 
 ---
 

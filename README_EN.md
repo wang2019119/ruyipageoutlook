@@ -169,6 +169,11 @@ print(page.title)
 page.quit()
 ```
 
+Where:
+
+- **`browser_path`**: Path to the Firefox executable. Useful when Firefox is not in the default install directory, you have multiple versions, or you use a portable build.
+- **`user_dir`**: Firefox profile / user directory. Useful when you want to reuse login state, keep cookies / local storage, or reuse extensions and preferences. If not set, `ruyiPage` creates a temporary profile automatically, suitable for one-off testing — it is usually cleaned up after closing.
+
 ### Beginner-friendly `launch`
 
 ```python
@@ -290,65 +295,33 @@ Useful when:
 - you are using ADS / FlowerBrowser and the real debugging port changes every run
 - you do not want to maintain a port range manually and prefer process-feature-based discovery
 
-### What `browser_path` and `user_dir` Mean
-
-#### `browser_path`
-
-The path to the Firefox executable.
-
-Use it when:
-
-- Firefox is not installed in the default location
-- you have multiple Firefox versions
-- you are using a portable Firefox build
-
-#### `user_dir`
-
-This is the Firefox profile / user directory.
-
-Use it when:
-
-- you want to reuse login state
-- you want to keep cookies / local storage
-- you want to reuse extensions, certificates, or preferences
-
-If you do not set it:
-
-- `ruyiPage` will create a temporary profile automatically
-- this is suitable for one-off testing
-- it is usually cleaned up after closing
-
 ---
 
-## Project Positioning
+## Project Positioning and Technical Approach
 
 `ruyiPage` is a Python library focused on **Firefox browser automation**. Its underlying protocol comes from:
 
 - WebDriver BiDi: https://w3c.github.io/webdriver-bidi/
 
-If you are not looking for just another CDP-based automation library, but instead care about:
-
-- **A next-generation Firefox automation framework**
-- **BiDi rather than CDP**
-- **Native actions that preserve a large amount of `isTrusted` behavior**
-- **Built-in human-like interaction capability for high-risk pages**
-- **Support for interception, mocking, collectors, and network control**
-- **Support for different user contexts in one browser, isolating cookies and storage across tabs**
-- **A Firefox automation stack that is easier to maintain long-term**
-
-then `ruyiPage` is built for that direction.
-
-You can think of it as:
-
 > A high-level automation framework for **Firefox**, with **WebDriver BiDi as the foundation** and beginner-friendly APIs on top.
 
-It especially emphasizes four things:
+Unlike many automation libraries that rely heavily on CDP (Chrome DevTools Protocol), `ruyiPage`:
 
-- **No CDP dependency**, which naturally avoids the CDP exposure surface
-- **Native action chains first**, to keep input, drag, click, and similar behavior closer to real `isTrusted` browser interaction
+- Uses **Firefox** as the core browser and **WebDriver BiDi** as the core protocol — **no CDP dependency**
+- Naturally avoids the CDP exposure surface and aligns with the W3C next-generation browser automation direction
+- **Native action chains first**, to keep input, drag, click, and similar behavior closer to real `isTrusted` interaction
 - **Built-in human-like interaction support**, better suited to high-risk pages
+- **Support for interception, mocking, collectors, and network control**
 - **Built-in user context isolation**, suitable for multi-account and multi-session flows in one browser
 - **High-level APIs that are easy to get started with**, which also helps teams keep a consistent code style
+
+### High-Risk Scenario Recommendation
+
+If your target site is highly sensitive to automation, the Firefox kernel solution provided by this project is the recommended first choice, or use any Firefox fingerprint browser:
+
+- https://github.com/LoseNine/firefox-fingerprintBrowser
+
+Recommended workflow: 1) Use the Firefox kernel solution first → 2) Then use `ruyiPage` for automation control — that combination is generally more stable.
 
 ---
 
@@ -376,60 +349,6 @@ Before diving into the details, this table gives a quick overview of what `ruyiP
 | Emulation | `page.emulation` | UA, viewport, screen, orientation, JS toggle |
 | WebExtension | `page.extensions` | Install unpacked extensions, install xpi, uninstall |
 | Local storage | `page.local_storage` / `page.session_storage` | Read and write local/session storage |
-
----
-
-## About Firefox Kernel and Fingerprint Browsers
-
-If your target site is highly sensitive to automation, it is better to start from the browser-level solution directly.
-
-### Recommended Approach
-
-The Firefox kernel solution provided by this project is the recommended first choice.
-
-At the same time, `ruyiPage` can also work with any Firefox fingerprint browser.
-
-For example:
-
-- https://github.com/LoseNine/firefox-fingerprintBrowser
-
-The value of this kind of browser/kernel is:
-
-- it customizes Firefox from the lower browser layer
-- it is not just front-end level masking
-- it works better together with `ruyiPage` on stronger anti-bot sites
-
-### Conclusion
-
-The role of `ruyiPage` is:
-
-- to provide high-level Firefox + BiDi automation capabilities
-- to avoid the CDP detection surface
-
-But if you are visiting high-risk sites, it is still recommended to:
-
-1. use the Firefox kernel solution recommended by this project first
-2. then use `ruyiPage` to automate it
-
-That combination is generally more stable.
-
----
-
-## Why Firefox + BiDi
-
-Many automation frameworks rely heavily on CDP (Chrome DevTools Protocol).
-
-`ruyiPage` takes a different path:
-
-- using **Firefox** as the core browser
-- using **WebDriver BiDi** as the core protocol
-- avoiding CDP entirely
-
-That means:
-
-- no traditional CDP automation exposure surface
-- closer alignment with the W3C next-generation browser automation direction
-- a better fit for Firefox-focused automation, input simulation, event listening, and network control
 
 ---
 
@@ -548,37 +467,7 @@ Suitable for:
 - passing fingerprint files, locale, headers, and screen parameters together
 - directly validating fingerprint output on sites such as `browserscan`
 
-### 4. Attach to an Already-Open Firefox Fingerprint Browser
-
-File: `examples/39_attach_exist_browser.py`
-
-It will:
-
-- remind you to start Firefox or a Firefox fingerprint browser manually first
-- automatically detect and attach based on Firefox / ADS / FlowerBrowser process features
-- operate the live browser instance directly after takeover
-
-Core pattern:
-
-```python
-from ruyipage import auto_attach_exist_browser_by_process
-
-page = auto_attach_exist_browser_by_process(
-    latest_tab=True,
-)
-
-print(page.browser.address)
-print(page.title)
-print(page.url)
-```
-
-Suitable for:
-
-- an already-open ADS / FlowerBrowser style Firefox fingerprint browser
-- browser backends that rewrite `--remote-debugging-port=9222` to a random port
-- automatically discovering the real port from process features and attaching to the running instance
-
-### 5. HTTP Proxy Auth Example
+### 4. HTTP Proxy Auth Example
 
 If you are using this project's own Firefox kernel, the kernel already supports reading HTTP proxy credentials from `fpfile` automatically.
 
@@ -1312,12 +1201,6 @@ page.run_js("prompt('请输入姓名')", as_expr=False)
 page.clear_prompt_handler()
 ```
 
-```python
-page.set_prompt_handler(prompt="ignore", prompt_text="张三")
-page.run_js("prompt('请输入姓名')", as_expr=False)
-page.clear_prompt_handler()
-```
-
 ---
 
 ## 13. Emulation
@@ -1448,19 +1331,6 @@ This is also the design source for many high-level APIs in this project, such as
    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=LoseNine/ruyipage&type=timeline&legend=top-left" />
  </picture>
 </a>
-
----
-
-## Final Notes
-
-The core direction of `ruyiPage` is not to expose every low-level BiDi command in raw form, but to provide:
-
-- a Firefox automation experience that feels friendly enough
-- an interface that is intuitive enough for beginners
-- structure that works well with editor navigation
-- enough room for advanced users to access BiDi capabilities when needed
-
-If you mainly use **Firefox** for automation, want to avoid the CDP detection surface as much as possible, and also want APIs that are easier to understand than writing raw protocol code directly, `ruyiPage` is built for that path.
 
 ---
 
