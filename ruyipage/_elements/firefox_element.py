@@ -493,7 +493,15 @@ class FirefoxElement(BaseElement):
                 options = getattr(browser, "options", None)
                 if getattr(options, "action_visual_enabled", False):
                     self._owner.run_js(
-                        "window.__ruyiActionVisual__&&window.__ruyiActionVisual__.showClick({},{},0)".format(x, y),
+                        "if(window.__ruyiAV){window.__ruyiAV.moves([["
+                        + str(x)
+                        + ","
+                        + str(y)
+                        + "]]);window.__ruyiAV.click("
+                        + str(x)
+                        + ","
+                        + str(y)
+                        + ",0)}",
                         as_expr=True,
                     )
             except Exception:
@@ -545,6 +553,34 @@ class FirefoxElement(BaseElement):
             return self
 
         if by_js:
+            try:
+                browser = getattr(self._owner, "_browser", None)
+                options = getattr(browser, "options", None)
+                if getattr(options, "action_visual_enabled", False):
+                    loc = self.location
+                    size = self.size
+                    rect = {
+                        "x": int(loc.get("x", 0)),
+                        "y": int(loc.get("y", 0)),
+                        "width": int(size.get("width", 0)),
+                        "height": int(size.get("height", 0)),
+                    }
+                    center = self._get_center() or {"x": 0, "y": 0}
+                    import json
+
+                    self._owner.run_js(
+                        "if(window.__ruyiAV){window.__ruyiAV.moves([[{x},{y}]]);window.__ruyiAV.click({x},{y},0);window.__ruyiAV.highlight({rect},{label})}".format(
+                            x=int(center.get("x", 0)),
+                            y=int(center.get("y", 0)),
+                            rect=json.dumps(rect),
+                            label=json.dumps(
+                                "{} input[js]".format(self.tag or "element")
+                            ),
+                        ),
+                        as_expr=True,
+                    )
+            except Exception:
+                pass
             if clear:
                 self._run_safe('(el) => { el.value = ""; }')
             self._run_safe(

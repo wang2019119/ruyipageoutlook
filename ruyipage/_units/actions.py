@@ -450,12 +450,11 @@ class Actions(object):
         Returns:
             self: 支持链式调用。
         """
-        # 在执行前提取可视化数据
-        visual_data = None
-        if self._is_visual_enabled():
-            visual_data = self._extract_visual_data()
-
         actions = []
+
+        # 保存副本供可视化使用
+        pointer_copy = self._pointer_actions[:]
+        key_copy = self._key_actions[:]
 
         if self._pointer_actions:
             actions.append(
@@ -488,9 +487,8 @@ class Actions(object):
         self._key_actions.clear()
         self._wheel_actions.clear()
 
-        # 执行后触发可视化渲染
-        if visual_data:
-            self._send_visual(visual_data)
+        # 可视化渲染（执行后注入）
+        self._send_visual_data(pointer_copy, key_copy)
 
         return self
 
@@ -884,65 +882,57 @@ class Actions(object):
         offset = dist * random.uniform(0.3, 0.6) * random.choice([-1, 1])
         return (mx + nx * offset, my + ny * offset)
 
-    # ------------------------------------------------------------------
-    # 行为可视化辅助
-    # ------------------------------------------------------------------
+    # ════════════════════════════════════════════════════════════════
+    #  可视化数据注入
+    # ════════════════════════════════════════════════════════════════
 
     def _is_visual_enabled(self):
-        """检查是否启用了鼠标行为可视化。"""
-        try:
-            browser = getattr(self._owner, "_browser", None)
-            options = getattr(browser, "options", None)
-            return bool(getattr(options, "action_visual_enabled", False))
-        except Exception:
+        """检查是否启用了 action_visual。"""
+        browser = getattr(self._owner, "_browser", None)
+        if not browser:
             return False
+        options = getattr(browser, "options", None)
+        return bool(options and getattr(options, "action_visual_enabled", False))
 
-    def _extract_visual_data(self):
-        """从当前动作队列中提取可视化需要的数据。"""
-        data = {"path": [], "clicks": [], "keys": ""}
-        last_x, last_y = self.curr_x, self.curr_y
+    def _send_visual_data(self, pointer_actions, key_actions):
+        """将鼠标动作数据注入页面 JS 端进行可视化渲染。"""
+        if not self._is_visual_enabled():
+            return
 
-        for act in self._pointer_actions:
-            t = act.get("type")
-            if t == "pointerMove":
-                x, y = act.get("x", last_x), act.get("y", last_y)
-                data["path"].append({"x": x, "y": y})
-                last_x, last_y = x, y
-            elif t == "pointerDown":
-                data["clicks"].append({"x": last_x, "y": last_y, "button": act.get("button", 0)})
-
-        for act in self._key_actions:
-            t = act.get("type")
-            if t == "keyDown":
-                v = act.get("value", "")
-                if len(v) == 1 and v.isprintable():
-                    data["keys"] += v
-
-        return data
-
-    def _send_visual(self, data):
-        """将可视化数据发送到页面端渲染。"""
         try:
-            import json
+            # 提取移动坐标点
+            move_points = []
+            for a in pointer_actions:
+                if a.get("type") == "pointerMove":
+                    move_points.append([int(a.get("x", 0)), int(a.get("y", 0))])
+
+            # 提取点击事件
+            clicks = []
+            last_x, last_y = self.curr_x, self.curr_y
+            for a in pointer_actions:
+                if a.get("type") == "pointerMove":
+                    last_x = int(a.get("x", last_x))
+                    last_y = int(a.get("y", last_y))
+                elif a.get("type") == "pointerDown":
+                    clicks.append([last_x, last_y, a.get("button", 0)])
+
+            # 构建 JS 调用
             js_parts = []
-            if len(data["path"]) >= 2:
+            if move_points:
+                import json
+
                 js_parts.append(
-                    "window.__ruyiActionVisual__&&window.__ruyiActionVisual__.drawPath({})".format(
-                        json.dumps(data["path"])
+                    "if(window.__ruyiAV)window.__ruyiAV.moves({})".format(
+                        json.dumps(move_points)
                     )
                 )
-            for c in data["clicks"]:
+            for cx, cy, btn in clicks:
                 js_parts.append(
-                    "window.__ruyiActionVisual__&&window.__ruyiActionVisual__.showClick({},{},{})".format(
-                        c["x"], c["y"], c["button"]
+                    "if(window.__ruyiAV)window.__ruyiAV.click({},{},{})".format(
+                        cx, cy, btn
                     )
                 )
-            if data["keys"]:
-                js_parts.append(
-                    "window.__ruyiActionVisual__&&window.__ruyiActionVisual__.showKeys({})".format(
-                        json.dumps(data["keys"])
-                    )
-                )
+
             if js_parts:
                 self._owner.run_js(";".join(js_parts), as_expr=True)
         except Exception:

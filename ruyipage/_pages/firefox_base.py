@@ -187,52 +187,61 @@ class FirefoxBase(BasePage):
 
     @staticmethod
     def _get_action_visual_script():
-        """鼠标行为可视化调试脚本。"""
+        """鼠标行为可视化调试脚本 — 数据驱动渲染，不依赖 DOM 事件。
+
+        Python 端通过 run_js 调用以下全局函数来驱动渲染：
+        - window.__ruyiAV.moves(points)          渲染鼠标移动轨迹
+        - window.__ruyiAV.click(x,y,btn)         渲染点击动画
+        - window.__ruyiAV.highlight(rect,label)  高亮点击目标元素
+        """
         return r"""(function() {
-    if (typeof window === 'undefined') return;
-    if (window.__ruyiActionVisual__) return;
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    if (window.__ruyiAV) return;
 
-    var CANVAS_ID = '__ruyi_action_visual_canvas__';
-    var COORD_ID = '__ruyi_action_visual_coord__';
-    var KEYS_ID = '__ruyi_action_visual_keys__';
-    var DOT_ID = '__ruyi_action_visual_dot__';
+    var CANVAS_ID = '__ruyi_av_canvas__';
+    var DOT_ID = '__ruyi_av_dot__';
+    var COORD_ID = '__ruyi_av_coord__';
+    var HIGHLIGHT_ID = '__ruyi_av_highlight__';
 
-    // --- cursor dot ---
+    // --- 光标圆点 ---
     var dot = document.getElementById(DOT_ID);
     if (!dot) {
         dot = document.createElement('div');
         dot.id = DOT_ID;
-        dot.style.cssText = 'position:fixed;width:12px;height:12px;border-radius:50%;' +
-            'background:rgba(255,60,60,0.55);border:2px solid rgba(255,60,60,0.8);' +
-            'pointer-events:none;z-index:2147483646;transform:translate(-50%,-50%);' +
-            'transition:left 0.02s linear,top 0.02s linear;display:none;';
+        dot.style.cssText = 'position:fixed;width:14px;height:14px;border-radius:50%;' +
+            'background:rgba(255,50,50,0.5);border:2px solid rgba(255,50,50,0.85);' +
+            'pointer-events:none;z-index:2147483646;transform:translate(-50%,-50%);display:none;';
         document.documentElement.appendChild(dot);
     }
 
-    // --- coord label ---
+    // --- 坐标标签 ---
     var coord = document.getElementById(COORD_ID);
     if (!coord) {
         coord = document.createElement('div');
         coord.id = COORD_ID;
         coord.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483646;' +
-            'font:11px/1.2 monospace;color:#fff;background:rgba(0,0,0,0.6);' +
-            'padding:2px 5px;border-radius:3px;display:none;white-space:nowrap;';
+            'font:11px/1.2 monospace;color:#fff;background:rgba(0,0,0,0.65);' +
+            'padding:2px 6px;border-radius:3px;display:none;white-space:nowrap;';
         document.documentElement.appendChild(coord);
     }
 
-    // --- keys display ---
-    var keysBox = document.getElementById(KEYS_ID);
-    if (!keysBox) {
-        keysBox = document.createElement('div');
-        keysBox.id = KEYS_ID;
-        keysBox.style.cssText = 'position:fixed;top:10px;right:10px;pointer-events:none;' +
-            'z-index:2147483646;font:14px/1.4 monospace;color:#fff;' +
-            'background:rgba(0,0,0,0.7);padding:4px 10px;border-radius:5px;' +
-            'display:none;max-width:300px;word-break:break-all;';
-        document.documentElement.appendChild(keysBox);
+    // --- 目标高亮框 ---
+    var highlight = document.getElementById(HIGHLIGHT_ID);
+    if (!highlight) {
+        highlight = document.createElement('div');
+        highlight.id = HIGHLIGHT_ID;
+        highlight.style.cssText = 'position:fixed;display:none;pointer-events:none;z-index:2147483646;' +
+            'border:3px solid rgba(255,205,86,0.98);border-radius:10px;' +
+            'background:rgba(255,205,86,0.12);box-shadow:0 0 0 2px rgba(255,255,255,0.20),0 14px 32px rgba(255,205,86,0.28);';
+        document.documentElement.appendChild(highlight);
     }
+    var highlightLabel = document.createElement('div');
+    highlightLabel.style.cssText = 'position:absolute;left:0;top:-28px;padding:3px 8px;border-radius:999px;' +
+        'font:11px/1.2 monospace;color:#111827;background:rgba(255,205,86,0.96);white-space:nowrap;';
+    highlight.appendChild(highlightLabel);
+    var highlightTimer = null;
 
-    // --- canvas ---
+    // --- Canvas 轨迹层 ---
     var canvas = document.getElementById(CANVAS_ID);
     if (!canvas) {
         canvas = document.createElement('canvas');
@@ -249,103 +258,153 @@ class FirefoxBase(BasePage):
     window.addEventListener('resize', resizeCanvas);
     var ctx = canvas.getContext('2d');
 
-    // --- mouse tracking ---
-    document.addEventListener('mousemove', function(e) {
-        dot.style.left = e.clientX + 'px';
-        dot.style.top = e.clientY + 'px';
-        dot.style.display = 'block';
-        coord.style.left = (e.clientX + 14) + 'px';
-        coord.style.top = (e.clientY + 14) + 'px';
-        coord.textContent = '(' + e.clientX + ', ' + e.clientY + ')';
-        coord.style.display = 'block';
-    }, true);
+    // --- 轨迹状态 ---
+    var trail = [];
+    var MAX_TRAIL = 200;
+    var fadeTimer = null;
+    var fadeOpacity = 1.0;
+    var moveQueue = [];
+    var moveRaf = 0;
 
-    // --- API ---
-    var fadeTimers = [];
-
-    window.__ruyiActionVisual__ = {
-        drawPath: function(points) {
-            if (!points || points.length < 2) return;
-            ctx.save();
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            for (var i = 1; i < points.length; i++) {
-                var t = i / (points.length - 1);
-                var r = Math.round(60 + 195 * (1 - t));
-                var g = Math.round(180 * t);
-                var b = Math.round(255 * t);
-                ctx.strokeStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.7)';
-                ctx.beginPath();
-                ctx.moveTo(points[i-1].x, points[i-1].y);
-                ctx.lineTo(points[i].x, points[i].y);
-                ctx.stroke();
-            }
-            // start dot
-            ctx.fillStyle = 'rgba(60,180,255,0.8)';
+    function drawTrail() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (trail.length < 2) return;
+        var len = trail.length;
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        for (var i = 1; i < len; i++) {
+            var age = 1 - (i / len);
+            var alpha = (0.15 + 0.55 * (i / len)) * fadeOpacity;
+            var r = Math.round(80 + 175 * age);
+            var g = Math.round(60 + 140 * (1 - age));
+            var b = Math.round(200 + 55 * (1 - age));
+            ctx.strokeStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha.toFixed(2) + ')';
             ctx.beginPath();
-            ctx.arc(points[0].x, points[0].y, 4, 0, Math.PI*2);
-            ctx.fill();
-            // end dot
-            ctx.fillStyle = 'rgba(255,60,60,0.8)';
-            ctx.beginPath();
-            ctx.arc(points[points.length-1].x, points[points.length-1].y, 4, 0, Math.PI*2);
-            ctx.fill();
-            ctx.restore();
-            // fade out after 2s
-            var tid = setTimeout(function() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }, 2000);
-            fadeTimers.push(tid);
-        },
-
-        showClick: function(x, y, button) {
-            var color = button === 2 ? 'rgba(255,60,60,' : button === 1 ? 'rgba(60,60,255,' : 'rgba(60,200,60,';
-            var ring = document.createElement('div');
-            ring.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;' +
-                'border:2px solid ' + color + '0.8);border-radius:50%;' +
-                'width:8px;height:8px;left:' + x + 'px;top:' + y + 'px;' +
-                'transform:translate(-50%,-50%);';
-            document.documentElement.appendChild(ring);
-            // crosshair
-            var cross = document.createElement('div');
-            cross.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;' +
-                'left:' + (x-8) + 'px;top:' + (y-0.5) + 'px;width:16px;height:1px;' +
-                'background:' + color + '0.6);';
-            var crossV = document.createElement('div');
-            crossV.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;' +
-                'left:' + (x-0.5) + 'px;top:' + (y-8) + 'px;width:1px;height:16px;' +
-                'background:' + color + '0.6);';
-            document.documentElement.appendChild(cross);
-            document.documentElement.appendChild(crossV);
-            // expand animation
-            var size = 8;
-            var opacity = 0.8;
-            var interval = setInterval(function() {
-                size += 3;
-                opacity -= 0.04;
-                if (opacity <= 0) {
-                    clearInterval(interval);
-                    ring.remove(); cross.remove(); crossV.remove();
-                    return;
-                }
-                ring.style.width = size + 'px';
-                ring.style.height = size + 'px';
-                ring.style.borderColor = color + opacity + ')';
-            }, 25);
-        },
-
-        showKeys: function(text) {
-            keysBox.textContent = text;
-            keysBox.style.display = 'block';
-            keysBox.style.opacity = '1';
-            if (keysBox._timer) clearTimeout(keysBox._timer);
-            keysBox._timer = setTimeout(function() {
-                keysBox.style.display = 'none';
-            }, 1500);
+            ctx.moveTo(trail[i-1][0], trail[i-1][1]);
+            ctx.lineTo(trail[i][0], trail[i][1]);
+            ctx.stroke();
         }
+    }
+
+    function startFadeOut() {
+        if (fadeTimer) clearInterval(fadeTimer);
+        fadeOpacity = 1.0;
+        fadeTimer = setInterval(function() {
+            fadeOpacity -= 0.025;
+            if (fadeOpacity <= 0) {
+                fadeOpacity = 0;
+                clearInterval(fadeTimer);
+                fadeTimer = null;
+                trail = [];
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                return;
+            }
+            drawTrail();
+        }, 40);
+    }
+
+    function moveDot(x, y) {
+        dot.style.left = x + 'px';
+        dot.style.top = y + 'px';
+        dot.style.display = 'block';
+        coord.style.left = (x + 16) + 'px';
+        coord.style.top = (y + 16) + 'px';
+        coord.textContent = '(' + x + ', ' + y + ')';
+        coord.style.display = 'block';
+    }
+
+    // === API: 渲染鼠标移动轨迹 ===
+    // points: [[x,y], [x,y], ...]
+    function pumpMoves() {
+        moveRaf = 0;
+        if (!moveQueue.length) {
+            startFadeOut();
+            return;
+        }
+        if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+        fadeOpacity = 1.0;
+
+        var batch = Math.min(moveQueue.length, 3);
+        for (var i = 0; i < batch; i++) {
+            var pt = moveQueue.shift();
+            trail.push(pt);
+            if (trail.length > MAX_TRAIL) {
+                trail.shift();
+            }
+            moveDot(pt[0], pt[1]);
+        }
+        drawTrail();
+        moveRaf = window.requestAnimationFrame(pumpMoves);
+    }
+
+    function renderMoves(points) {
+        if (!points || !points.length) return;
+        for (var i = 0; i < points.length; i++) {
+            moveQueue.push(points[i]);
+        }
+        if (!moveRaf) {
+            moveRaf = window.requestAnimationFrame(pumpMoves);
+        }
+    }
+
+    // === API: 渲染点击动画 ===
+    function renderClick(x, y, button) {
+        var color = button === 2 ? '255,60,60' : button === 1 ? '60,60,255' : '60,200,60';
+        moveDot(x, y);
+
+        var ring = document.createElement('div');
+        ring.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;' +
+            'border:3px solid rgba(' + color + ',0.92);border-radius:50%;' +
+            'width:14px;height:14px;left:' + x + 'px;top:' + y + 'px;' +
+            'transform:translate(-50%,-50%);';
+        document.documentElement.appendChild(ring);
+        var ch = document.createElement('div');
+        ch.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;' +
+            'left:' + (x-18) + 'px;top:' + (y-1) + 'px;width:36px;height:2px;' +
+            'background:rgba(' + color + ',0.68);';
+        var cv = document.createElement('div');
+        cv.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;' +
+            'left:' + (x-1) + 'px;top:' + (y-18) + 'px;width:2px;height:36px;' +
+            'background:rgba(' + color + ',0.68);';
+        document.documentElement.appendChild(ch);
+        document.documentElement.appendChild(cv);
+        var sz = 14, op = 0.92;
+        var anim = setInterval(function() {
+            sz += 3.2; op -= 0.03;
+            if (op <= 0) { clearInterval(anim); ring.remove(); ch.remove(); cv.remove(); return; }
+            ring.style.width = sz + 'px';
+            ring.style.height = sz + 'px';
+            ring.style.borderColor = 'rgba(' + color + ',' + op.toFixed(2) + ')';
+        }, 20);
+    }
+
+    function renderHighlight(rect, label) {
+        if (!rect) return;
+        highlight.style.display = 'block';
+        highlight.style.left = Math.max(0, rect.x) + 'px';
+        highlight.style.top = Math.max(0, rect.y) + 'px';
+        highlight.style.width = Math.max(0, rect.width) + 'px';
+        highlight.style.height = Math.max(0, rect.height) + 'px';
+        highlightLabel.textContent = label || 'target';
+        if (highlightTimer) {
+            clearTimeout(highlightTimer);
+        }
+        highlightTimer = setTimeout(function() {
+            highlight.style.display = 'none';
+        }, 900);
+    }
+
+    // 挂载到全局
+    window.__ruyiAV = {
+        moves: renderMoves,
+        click: renderClick,
+        highlight: renderHighlight
     };
 })"""
+
+    @staticmethod
+    def _is_expected_navigation_abort(error):
         """判断是否为 Firefox 导航被页面主动中断的可预期情况。"""
         if not isinstance(error, BiDiError):
             return False
